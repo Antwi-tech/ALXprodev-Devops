@@ -1,0 +1,36 @@
+#!/bin/bash
+# Parallel Pokémon data retrieval with process management
+
+POKEMONS=("bulbasaur" "ivysaur" "venusaur" "charmander" "charmeleon")
+BASE_URL="https://pokeapi.co/api/v2/pokemon"
+OUTPUT_DIR="pokemon_data_parallel"
+ERROR_FILE="errors_parallel.txt"
+
+mkdir -p "$OUTPUT_DIR"
+: > "$ERROR_FILE"  # Clear error file at start
+
+fetch_pokemon() {
+    local pokemon="$1"
+    local url="$BASE_URL/$pokemon"
+    local output_file="$OUTPUT_DIR/$pokemon.json"
+
+    echo "Fetching data for $pokemon..."
+    HTTP_STATUS=$(curl -s -o "$output_file" -w "%{http_code}" "$url")
+
+    if [ "$HTTP_STATUS" -eq 200 ]; then
+        echo "Saved data to $output_file ✅"
+    else
+        echo "Error fetching $pokemon (HTTP $HTTP_STATUS)" >> "$ERROR_FILE"
+        rm -f "$output_file"  # Remove incomplete file
+    fi
+}
+
+# Launch all fetches in parallel
+for pokemon in "${POKEMONS[@]}"; do
+    fetch_pokemon "$pokemon" &
+done
+
+# Wait for all background jobs to finish
+wait
+
+echo "All Pokémon data fetched."
